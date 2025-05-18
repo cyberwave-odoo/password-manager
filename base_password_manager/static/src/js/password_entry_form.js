@@ -4,117 +4,106 @@ import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
 import { FormController } from "@web/views/form/form_controller";
 import { patch } from "@web/core/utils/patch";
-import { Dialog } from "@web/core/dialog/dialog";
 import { _t } from "@web/core/l10n/translation";
-import { useState } from "@odoo/owl";
 
-class KeyUpdateDialog extends Dialog {
-    static template = "base_password_manager.KeyUpdateDialog";
-    static components = { Dialog };
+import { user } from "@web/core/user";
 
-    setup() {
-        this.state = useState({
-            masterPassword: "",
-        });
-        this.rpc = useService("rpc");
-        this.notification = useService("notification");
-    }
+// Master password management
+const MASTER_PASSWORD_KEY = 'master_key';
 
-    async onUpdate() {
-        if (!this.state.masterPassword) {
-            return;
-        }
-        try {
-            const result = await this.rpc("/password/entry/reencrypt_key", {
-                entry_id: this.props.entryId,
-                master_password: this.state.masterPassword,
-            });
-            if (result.success) {
-                this.notification.add(_t("Success"), {
-                    type: "success",
-                    message: _t("Key updated successfully"),
-                });
-                this.props.close();
-            } else {
-                this.notification.add(_t("Error"), {
-                    type: "danger",
-                    message: result.message,
-                });
-            }
-        } catch (error) {
-            this.notification.add(_t("Error"), {
-                type: "danger",
-                message: error.message,
-            });
-        }
-    }
+function getMasterPassword() {
+    return sessionStorage.getItem(MASTER_PASSWORD_KEY);
 }
 
-registry.category("public_components").add("KeyUpdateDialog", KeyUpdateDialog);
+function setMasterPassword(password) {
+    sessionStorage.setItem(MASTER_PASSWORD_KEY, password);
+}
 
-patch(FormController, {
-    setup() {
-        this._super();
-        this.passwordEncryption = useService("password_encryption");
-        this.rpc = useService("rpc");
-        this.notification = useService("notification");
-        this.dialog = useService("dialog");
-        this.busService = useService("bus_service");
-        this._setupBusListener();
-    },
 
-    _setupBusListener() {
-        this.busService.subscribe("password_manager", (message) => {
-            if (message.type === "password_change" || message.type === "key_update_required") {
-                this._handlePasswordChange(message);
-            }
-        });
-    },
 
-    _handlePasswordChange(message) {
-        this.dialog.add(KeyUpdateDialog, {
-            title: _t("Password Update Required"),
-            size: "medium",
-            entryId: message.entry_id,
-            message: _t("A password you have access to has been modified. Please update your key to continue accessing it."),
-        });
-    },
+// Register components
 
-    async _onFieldChanged(event) {
-        await this._super(event);
-        
-        if (event.data.changes.encrypted_password) {
-            const record = this.model.root.data;
-            const masterPassword = await this._getMasterPassword();
-            
-            if (!masterPassword) {
-                return;
-            }
+// Register the copy to clipboard client action
+registry.category("actions").add("copy_to_clipboard", async (env, context) => {
+    console.log("Starting copy to clipboard action");
+    console.log("Context:", context);
 
-            try {
-                const salt = await this.rpc('/password_manager/get_user_salt', {});
-                const encryptedPassword = await this.passwordEncryption.encryptPassword(
-                    event.data.changes.encrypted_password,
-                    masterPassword,
-                    salt
-                );
+    const recordId = JSON.parse(context._originalAction).context.active_ids;
+    console.log(recordId);
 
-                await this.model.root.update({
-                    encrypted_password: encryptedPassword
-                });
-
-                this.notification.add(this.env._t("Password encrypted successfully"), {
-                    type: 'success',
-                });
-            } catch (error) {
-                this.notification.add(this.env._t("Encryption failed"), {
-                    type: 'danger',
-                });
-            }
+    let masterPassword = getMasterPassword();
+    if (!masterPassword) {
+        console.log("No cached master password, prompting user");
+        masterPassword = await prompt(_t("Please enter your master password:"));
+        if (masterPassword) {
+            setMasterPassword(masterPassword);
         }
-    },
-
-    async _getMasterPassword() {
-        return prompt(this.env._t("Please enter your master password:"));
+    } else {
+        console.log("Using cached master password");
     }
-}); 
+    
+    if (!masterPassword) {
+        console.log("No master password provided");
+        return;
+    }
+
+    try {
+        console.log("Getting user salt");
+        const orm = env.services.orm;
+        console.log(recordId)
+        const salt = await orm.call("res.users", "get_user_salt", [user.userId]);
+        console.log("Salt received:", salt);
+
+        // Read the record to get the encrypted password
+        const recordData = await orm.call("password.entry", "read", [recordId, ["encrypted_password"]]);
+        console.log("Record data:", recordData);
+        
+        if (!recordData) {
+            throw new Error(_t("Failed to retrieve password record"));
+        }
+        
+        if (recordData.length === 0) {
+            throw new Error(_t("Password record not found"));
+        }
+        
+        if (!recordData[0].encrypted_password) {
+            throw new Error(_t("No encrypted password found in record"));
+        }
+
+        console.log("Decrypting password");
+        const decryptedPassword = await env.services.password_encryption.decryptPassword(
+            recordData[0].encrypted_password,
+            masterPassword,
+            salt
+        );
+        console.log("Password decrypted successfully");
+
+        // Create a temporary input element
+        console.log("Creating temporary input element");
+        const tempInput = document.createElement('input');
+        tempInput.value = decryptedPassword;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        
+        console.log("Executing copy command");
+        const copySuccess = document.execCommand('copy');
+        document.body.removeChild(tempInput);
+        
+        if (!copySuccess) {
+            throw new Error("Failed to copy to clipboard");
+        }
+
+        console.log("Copy successful, showing notification");
+        env.services.notification.add(_t("Success"), {
+            type: 'success',
+            message: _t("Password copied to clipboard"),
+        });
+    } catch (error) {
+        console.error("Copy to clipboard error:", error);
+        env.services.notification.add(_t("Error"), {
+            type: 'danger',
+            message: error.message || _t("Failed to copy password to clipboard"),
+        });
+    }
+});
+

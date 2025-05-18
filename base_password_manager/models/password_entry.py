@@ -108,11 +108,7 @@ class PasswordEntry(models.Model):
         except Exception:
             raise ValidationError(_('Invalid master password or insufficient permissions'))
 
-    @api.model
-    def generate_strong_password(self, length=16):
-        """Generate a strong password"""
-        chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()_+-=[]{}|;:,.<>?'
-        return ''.join(os.urandom(length).hex()[:length])
+
 
     def action_share_password(self):
         """Share password with another user"""
