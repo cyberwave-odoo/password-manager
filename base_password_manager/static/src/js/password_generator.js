@@ -1,61 +1,47 @@
-odoo.define('password_manager.password_generator', function (require) {
-    "use strict";
+/** @odoo-module **/
 
-    var core = require('web.core');
-    var Widget = require('web.Widget');
-    var QWeb = core.qweb;
+import { Component } from "@odoo/owl";
+import { useService } from "@web/core/utils/hooks";
 
-    var PasswordGenerator = Widget.extend({
-        template: 'PasswordGenerator',
-        events: {
-            'click .generate-password': '_onGeneratePassword',
-            'change .password-options input': '_onOptionChange',
-        },
+export class PasswordGenerator extends Component {
+    setup() {
+        this.rpc = useService("rpc");
+        this.notification = useService("notification");
+        this.state = useState({
+            length: 16,
+            includeUppercase: true,
+            includeLowercase: true,
+            includeNumbers: true,
+            includeSpecial: true,
+            generatedPassword: '',
+        });
+    }
 
-        init: function (parent, options) {
-            this._super.apply(this, arguments);
-            this.options = _.extend({
-                length: 16,
-                useUppercase: true,
-                useLowercase: true,
-                useNumbers: true,
-                useSpecial: true,
-            }, options || {});
-        },
+    async generatePassword() {
+        try {
+            const result = await this.rpc('/password_manager/generate_password', {
+                length: this.state.length,
+                include_uppercase: this.state.includeUppercase,
+                include_lowercase: this.state.includeLowercase,
+                include_numbers: this.state.includeNumbers,
+                include_special: this.state.includeSpecial,
+            });
+            this.state.generatedPassword = result;
+        } catch (error) {
+            this.notification.add(this.env._t("Password generation failed"), {
+                type: 'danger',
+            });
+        }
+    }
 
-        _onGeneratePassword: function (ev) {
-            ev.preventDefault();
-            var password = this._generatePassword();
-            this.$('.generated-password').val(password);
-        },
+    copyToClipboard() {
+        if (this.state.generatedPassword) {
+            navigator.clipboard.writeText(this.state.generatedPassword);
+            this.notification.add(this.env._t("Password copied to clipboard"), {
+                type: 'success',
+            });
+        }
+    }
+}
 
-        _onOptionChange: function (ev) {
-            var $input = $(ev.currentTarget);
-            this.options[$input.attr('name')] = $input.prop('checked');
-        },
-
-        _generatePassword: function () {
-            var chars = '';
-            if (this.options.useUppercase) chars += 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-            if (this.options.useLowercase) chars += 'abcdefghijklmnopqrstuvwxyz';
-            if (this.options.useNumbers) chars += '0123456789';
-            if (this.options.useSpecial) chars += '!@#$%^&*()_+-=[]{}|;:,.<>?';
-
-            if (!chars) {
-                throw new Error('At least one character type must be selected');
-            }
-
-            var password = '';
-            var array = new Uint32Array(this.options.length);
-            window.crypto.getRandomValues(array);
-
-            for (var i = 0; i < this.options.length; i++) {
-                password += chars[array[i] % chars.length];
-            }
-
-            return password;
-        },
-    });
-
-    return PasswordGenerator;
-}); 
+PasswordGenerator.template = 'password_manager.PasswordGenerator'; 

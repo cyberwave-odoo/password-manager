@@ -1,8 +1,14 @@
 from odoo import models, fields, api
-
+import os
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
     password_share_ids = fields.One2many('password.share', 'shared_with_id', string='Shared Passwords')
     password_entry_ids = fields.One2many('password.entry', 'user_id', string='Password Entries')
-    password_category_ids = fields.One2many('password.category', 'user_id', string='Password Categories') 
+    password_salt = fields.Char(string='Password Salt', compute='_compute_password_salt', store=True)
+    
+    def _compute_password_salt(self):
+        """Compute a unique salt for each user"""
+        for user in self:
+            if not user.password_salt:
+                user.password_salt = os.urandom(16).hex() 

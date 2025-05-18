@@ -1,4 +1,4 @@
-# password-manager# Password Manager
+# Password Manager
 
 A modular Odoo app for securely managing passwords, categories, and sharing credentials within your organization.
 

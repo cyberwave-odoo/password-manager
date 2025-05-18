@@ -1,37 +1,41 @@
 # -*- coding: utf-8 -*-
 {
-    'name': "Base Password Manager",
-    'summary': """
-        Secure password management with end-to-end encryption and zero-knowledge architecture""",
+    'name': 'Password Manager',
+    'version': '16.0.1.0.0',
+    'category': 'Tools',
+    'summary': 'Secure password management with company-based access control',
     'description': """
-
+        Password Manager with secure encryption and access control.
+        Features:
+        - Company-based password management
+        - Secure encryption using public/private keys
+        - Password sharing with access control
     """,
-    'author': "Cyberwave",
-    'website': "https://www.cyberwave.be",
-    'category': 'Security',
-    'version': '16.0',
+    'author': 'Your Company',
+    'website': 'https://www.yourcompany.com',
     'depends': [
         'base',
-        'web',
         'mail',
+        'web',
     ],
     'data': [
-        'security/ir.model.access.csv',
         'security/password_manager_security.xml',
+        'security/ir.model.access.csv',
         'views/password_entry_views.xml',
-        'views/password_category_views.xml',
         'views/password_share_views.xml',
         'views/menu_views.xml',
     ],
     'assets': {
         'web.assets_backend': [
-            'password_manager/static/src/js/password_generator.js',
-            'password_manager/static/src/js/password_encryption.js',
-            'password_manager/static/src/css/password_manager.css',
+            'base_password_manager/static/src/js/password_encryption.js',
+            'base_password_manager/static/src/js/password_generator.js',
+            'base_password_manager/static/src/xml/password_encryption.xml',
+            'base_password_manager/static/src/xml/password_generator.xml',
+            'base_password_manager/static/src/css/password_manager.css',
         ],
     },
-    'application': True,
     'installable': True,
+    'application': True,
     'auto_install': False,
-    'license': 'AGPL-3',
+    'license': 'LGPL-3',
 }

@@ -1,35 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-    <!-- Main Menu -->
+    <!-- Root Menu -->
     <menuitem id="menu_password_manager_root"
-              name="Password Manager"
-              web_icon="password_manager,static/description/icon.png"
-              sequence="1"/>
+        name="Password Manager"
+        web_icon="base_password_manager,static/description/icon.png"
+        sequence="100"/>
 
-    <!-- Password Entry Menu -->
+    <!-- Main Menu Items -->
     <menuitem id="menu_password_entry"
-              name="Passwords"
-              parent="menu_password_manager_root"
-              action="action_password_entry"
-              sequence="10"/>
+        name="Passwords"
+        parent="menu_password_manager_root"
+        action="action_password_entry"
+        sequence="10"/>
 
-    <!-- Password Category Menu -->
-    <menuitem id="menu_password_category"
-              name="Categories"
-              parent="menu_password_manager_root"
-              action="action_password_category"
-              sequence="20"/>
-
-    <!-- Password Share Menu -->
+    <!-- Configuration Menu -->
     <menuitem id="menu_password_share"
-              name="Shared Passwords"
-              parent="menu_password_manager_root"
-              action="action_password_share"
-              sequence="30"/>
-
-    <!-- Settings Menu -->
-    <menuitem id="menu_password_manager_settings"
-              name="Settings"
-              parent="menu_password_manager_root"
-              sequence="100"/>
+        name="Shares"
+        parent="menu_password_manager_root"
+        action="action_password_share"
+        sequence="100"/>
 </odoo> 
