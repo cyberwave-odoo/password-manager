@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa, padding
 from cryptography.hazmat.primitives import serialization
 import os
 import json
+from datetime import datetime, timedelta
+
 
 class PasswordEntry(models.Model):
     _name = 'password.entry'
@@ -22,72 +24,87 @@ class PasswordEntry(models.Model):
     user_id = fields.Many2one('res.users', string='Owner', default=lambda self: self.env.user)
     company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
     last_modified = fields.Datetime(string='Last Modified', default=fields.Datetime.now)
+    last_encryption = fields.Datetime(string='Last Key Encryption', default=fields.Datetime.now)
+    version = fields.Integer(string='Version', default=1)
     
-    public_key = fields.Text(string='Public Key', help='Company public key for encryption')
-    private_key = fields.Text(string='Private Key', help='Company private key for decryption')
-    
+    key_ids = fields.One2many('password.key', 'password_entry_id', string='Encrypted Keys')
     share_ids = fields.One2many('password.share', 'password_entry_id', string='Shares')
-    
-    @api.model
-    def _generate_key(self, master_password):
-        """Generate encryption key from master password"""
-        salt = b'password_manager_salt'  # In production, use a unique salt per user
-        kdf = PBKDF2HMAC(
-            algorithm=hashes.SHA256(),
-            length=32,
-            salt=salt,
-            iterations=100000,
-        )
-        key = base64.urlsafe_b64encode(kdf.derive(master_password.encode()))
-        return key
+
+    def _notify_password_change(self):
+        """Notify all users with access about password change"""
+        self.ensure_one()
+        channel = f'password_manager_{self.id}'
+        message = {
+            'type': 'password_change',
+            'entry_id': self.id,
+            'version': self.version,
+            'timestamp': fields.Datetime.now().isoformat(),
+        }
+        self.env['bus.bus']._sendone(channel, 'password_manager', message)
+
+    def _increment_version(self):
+        """Increment the version number and update last encryption time"""
+        self.write({
+            'version': self.version + 1,
+            'last_encryption': fields.Datetime.now()
+        })
 
     def encrypt_password(self, password, master_password):
-        """Encrypt password using master password and company public key"""
-        # First encrypt with master password
-        key = self._generate_key(master_password)
-        f = Fernet(key)
-        encrypted_data = f.encrypt(password.encode())
+        """Encrypt password using symmetric key and store encrypted key"""
+        # Generate a new symmetric key
+        symmetric_key = self.env['password.key']._generate_symmetric_key()
         
-        # Then encrypt with company public key
-        if self.public_key:
-            public_key = serialization.load_pem_public_key(
-                self.public_key.encode()
-            )
-            encrypted_data = public_key.encrypt(
-                encrypted_data,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
-                )
-            )
+        # Encrypt the password with the symmetric key
+        f = Fernet(symmetric_key)
+        encrypted_password = f.encrypt(password.encode())
         
-        return base64.b64encode(encrypted_data).decode()
+        # Store the encrypted password
+        self.encrypted_password = base64.b64encode(encrypted_password).decode()
+        
+        # Create or update the key record for the owner
+        key_vals = {
+            'password_entry_id': self.id,
+            'user_id': self.user_id.id,
+            'encrypted_key': self.env['password.key'].encrypt_symmetric_key(symmetric_key, master_password).decode()
+        }
+        
+        existing_key = self.env['password.key'].search([
+            ('password_entry_id', '=', self.id),
+            ('user_id', '=', self.user_id.id)
+        ])
+        
+        if existing_key:
+            existing_key.write(key_vals)
+        else:
+            self.env['password.key'].create(key_vals)
+
+        # Increment version and notify
+        self._increment_version()
+        self._notify_password_change()
 
     def decrypt_password(self, master_password):
-        """Decrypt password using master password and company private key"""
+        """Decrypt password using the user's master password"""
         try:
-            # First decrypt with company private key
-            encrypted_data = base64.b64decode(self.encrypted_password.encode())
-            if self.private_key:
-                private_key = serialization.load_pem_private_key(
-                    self.private_key.encode(),
-                    password=None
-                )
-                encrypted_data = private_key.decrypt(
-                    encrypted_data,
-                    padding.OAEP(
-                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                        algorithm=hashes.SHA256(),
-                        label=None
-                    )
-                )
+            # Get the key record for the current user
+            key_record = self.env['password.key'].search([
+                ('password_entry_id', '=', self.id),
+                ('user_id', '=', self.env.user.id)
+            ], limit=1)
             
-            # Then decrypt with master password
-            key = self._generate_key(master_password)
-            f = Fernet(key)
-            decrypted_data = f.decrypt(encrypted_data)
-            return decrypted_data.decode()
+            if not key_record:
+                raise ValidationError(_('No key found for this password entry'))
+            
+            # Check if key needs re-encryption
+            if key_record.version < self.version:
+                raise ValidationError(_('Password has been modified. Please re-encrypt your key.'))
+            
+            # Decrypt the symmetric key using the master password
+            symmetric_key = key_record.decrypt_symmetric_key(master_password)
+            
+            # Decrypt the password using the symmetric key
+            f = Fernet(symmetric_key)
+            encrypted_password = base64.b64decode(self.encrypted_password.encode())
+            return f.decrypt(encrypted_password).decode()
         except Exception:
             raise ValidationError(_('Invalid master password or insufficient permissions'))
 
@@ -109,4 +126,20 @@ class PasswordEntry(models.Model):
                 'default_password_entry_id': self.id,
             }
         }
+
+    @api.model
+    def _cron_check_key_versions(self):
+        """Cron job to check for outdated keys and notify users"""
+        outdated_keys = self.env['password.key'].search([
+            ('version', '<', self.version)
+        ])
+        for key in outdated_keys:
+            channel = f'password_manager_{key.password_entry_id.id}'
+            message = {
+                'type': 'key_update_required',
+                'entry_id': key.password_entry_id.id,
+                'version': key.password_entry_id.version,
+                'timestamp': fields.Datetime.now().isoformat(),
+            }
+            self.env['bus.bus']._sendone(channel, 'password_manager', message)
 

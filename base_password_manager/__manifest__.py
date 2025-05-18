@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'Password Manager',
-    'version': '16.0.1.0.0',
+    'version': '18.0.1.0.0',
     'category': 'Tools',
     'summary': 'Secure password management with company-based access control',
     'description': """
@@ -20,17 +20,18 @@
     ],
     'data': [
         'security/password_manager_security.xml',
+        'security/password_key_security.xml',
         'security/ir.model.access.csv',
         'views/password_entry_views.xml',
         'views/password_share_views.xml',
         'views/menu_views.xml',
+        'data/ir_cron_data.xml',
     ],
     'assets': {
         'web.assets_backend': [
-            'base_password_manager/static/src/js/password_encryption.js',
-            'base_password_manager/static/src/js/password_generator.js',
-            'base_password_manager/static/src/xml/password_encryption.xml',
-            'base_password_manager/static/src/xml/password_generator.xml',
+            'base_password_manager/static/src/js/password_encryption_service.js',
+            'base_password_manager/static/src/js/password_entry_form.js',
+            'base_password_manager/static/src/xml/password_entry_templates.xml',
             'base_password_manager/static/src/css/password_manager.css',
         ],
     },

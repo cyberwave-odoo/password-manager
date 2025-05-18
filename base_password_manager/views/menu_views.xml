@@ -4,7 +4,7 @@
     <menuitem id="menu_password_manager_root"
         name="Password Manager"
         web_icon="base_password_manager,static/description/icon.png"
-        sequence="100"/>
+        sequence="1"/>
 
     <!-- Main Menu Items -->
     <menuitem id="menu_password_entry"
