@@ -25,6 +25,12 @@ class TestPasswordManagerSecurity(TransactionCase):
             'email': 'write@test.com',
             'password': 'test',
         })
+        cls.user_write2 = cls.env['res.users'].create({
+            'name': 'Write User 2',
+            'login': 'write2@test.com',
+            'email': 'write2@test.com',
+            'password': 'test',
+        })
         cls.user_no_access = cls.env['res.users'].create({
             'name': 'No Access User',
             'login': 'noaccess@test.com',
@@ -48,6 +54,11 @@ class TestPasswordManagerSecurity(TransactionCase):
         cls.share_write = cls.env['password.share'].with_user(cls.user_owner).create({
             'password_entry_id': cls.password_entry.id,
             'shared_with_id': cls.user_write.id,
+            'access_type': 'write',
+        })
+        cls.share_write2 = cls.env['password.share'].with_user(cls.user_owner).create({
+            'password_entry_id': cls.password_entry.id,
+            'shared_with_id': cls.user_write2.id,
             'access_type': 'write',
         })
         
@@ -114,7 +125,6 @@ class TestPasswordManagerSecurity(TransactionCase):
         
         # Write user should have write access to their share and other shares
         self.share_write.with_user(self.user_write).write({'access_type': 'write'})
-        
         self.share_read.with_user(self.user_write).write({'access_type': 'write'})
         self.share_read.with_user(self.user_write).write({'access_type': 'read'})
         
@@ -126,7 +136,25 @@ class TestPasswordManagerSecurity(TransactionCase):
         with self.assertRaises(AccessError):
             self.share_read.with_user(self.user_no_access).write({'access_type': 'write'})
 
-    def test_05_company_restriction(self):
+    def test_05_write_users_can_modify_each_other_shares(self):
+        """Test that users with write access can modify each other's shares"""
+        # First write user can modify second write user's share
+        self.share_write2.with_user(self.user_write).write({'access_type': 'read'})
+        with self.assertRaises(AccessError):
+            self.share_write.with_user(self.user_write2).write({'access_type': 'read'})
+        self.share_write2.with_user(self.user_write).write({'access_type': 'write'})
+        
+        # Second write user can modify first write user's share
+        self.share_write.with_user(self.user_write2).write({'access_type': 'read'})
+        self.share_write.with_user(self.user_write2).write({'access_type': 'write'})
+        
+        # Both write users can modify read user's share
+        self.share_read.with_user(self.user_write).write({'access_type': 'write'})
+        self.share_read.with_user(self.user_write2).write({'access_type': 'read'})
+        self.share_read.with_user(self.user_write).write({'access_type': 'read'})
+        self.share_read.with_user(self.user_write2).write({'access_type': 'write'})
+
+    def test_06_company_restriction(self):
         """Test company restriction"""
         # Create a new company
         
