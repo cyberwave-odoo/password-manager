@@ -2,13 +2,18 @@
 
 import { registry } from "@web/core/registry";
 import { CharField } from "@web/views/fields/char/char_field";
-import { onMounted, onWillUpdateProps, useState, useRef } from "@odoo/owl";
 
 export class EncryptedPasswordField extends CharField {
     static template = "base_password_manager.EncryptedPasswordField";
 
     setup() {
         super.setup();
+
+    }
+
+    onInput(ev) {
+        console.log("Key pressed:", ev.target.value);
+
     }
 }
 
