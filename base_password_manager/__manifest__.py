@@ -29,9 +29,10 @@
     ],
     'assets': {
         'web.assets_backend': [
+            'base_password_manager/static/src/xml/password_field.xml',
             'base_password_manager/static/src/js/password_encryption_service.js',
             'base_password_manager/static/src/js/password_entry_form.js',
-            'base_password_manager/static/src/xml/password_entry_templates.xml',
+            'base_password_manager/static/src/js/password_to_clipboard.js',
             'base_password_manager/static/src/css/password_manager.css',
         ],
     },
