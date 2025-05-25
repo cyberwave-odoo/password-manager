@@ -22,6 +22,7 @@
         'security/password_manager_security.xml',
         'security/password_key_security.xml',
         'security/ir.model.access.csv',
+        'security/user_private_key_rules.xml',
         'views/password_entry_views.xml',
         'views/password_share_views.xml',
         'views/menu_views.xml',
@@ -30,7 +31,8 @@
     'assets': {
         'web.assets_backend': [
             'base_password_manager/static/src/xml/password_field.xml',
-            'base_password_manager/static/src/js/password_encryption_service.js',
+            'base_password_manager/static/src/services/password_service.js',
+            'base_password_manager/static/src/services/password_encryption_service.js',
             'base_password_manager/static/src/js/password_entry_form.js',
             'base_password_manager/static/src/js/password_to_clipboard.js',
             'base_password_manager/static/src/css/password_manager.css',

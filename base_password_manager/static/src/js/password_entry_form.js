@@ -5,7 +5,7 @@ import { CharField } from "@web/views/fields/char/char_field";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 import { ConfirmationDialog } from "@web/core/confirmation_dialog/confirmation_dialog";
-import { debounce } from "@web/core/utils/timing";
+
 
 export class EncryptedPasswordField extends CharField {
     static template = "base_password_manager.EncryptedPasswordField";
@@ -18,60 +18,64 @@ export class EncryptedPasswordField extends CharField {
         this.passwordService = useService("password_service");
         this.passwordEncryption = useService("password_encryption");
         
-        this.debouncedOnChange = debounce(this.onChange.bind(this), 500);
+
     }
 
     async onChange(ev) {
         const recordId = this.props.record.resId;
         const newValue = ev.target.value;
         const oldValue = this.props.record.data[this.props.name];
-        let confirmed = false;
+        let confirmed = true;
 
-        if (!recordId) {
-            console.log("No record ID, skipping confirmation");
-            return;
+        if (recordId) {
+                confirmed = await new Promise((resolve) => {
+                this.dialog.add(ConfirmationDialog, {
+                    title: _t("Confirm Password Change"),
+                    body: _t("Are you sure you want to save the password?"),
+                    confirm: () => resolve(true),
+                    cancel: () => resolve(false),
+                });
+            });
         }
 
-        confirmed = await new Promise((resolve) => {
-            this.dialog.add(ConfirmationDialog, {
-                title: _t("Confirm Password Change"),
-                body: _t("Are you sure you want to save the password?"),
-                confirm: () => resolve(true),
-                cancel: () => resolve(false),
-            });
-        });
 
         if (!confirmed) {
-            if (this.props.discard) {
-                this.props.discard();
-            } else if (this.props.record.discard) {
-                this.props.record.discard();
-            }
+            this.discard();
             return;
         }
         else {
             if (!recordId) {
                 console.log("No record ID, going further");
                 // Call the 'write' method on the 'password.entry' model
-                //ev.target.value = 'create';
-                this.props.record._change({
-                    [this.props.name]: "toto",
-                });
-                
+                //this.props.record.data[this.props.name] = "tototototo";
+                console.log(oldValue, newValue);
+                ev.target.value = "new_value"; // Set a new value for the input field
  
                 
             }
             else {
                 //await this.orm.call("password.entry", "write", [recordId, { [this.props.name]: newValue }]);
-                if (this.props.save) {
-                    this.props.save();
-                }
-                else if (this.props.record.save) {
-                    this.props.record.save();
-                }
+                //if (this.props.save) {
+                //    this.props.save();
+                //}
+                //else if (this.props.record.save) {
+                //    this.props.record.save();
+                //}
+                ev.target.value = "existing_write_value"; // Set a new value for the input field 
+                 
             }
+            this.save();
+            // Only update the displayed value, do not touch _values or _textValues
         }
+        
+        return;
+    }
 
+    async discard() {
+        await this.props.discard();
+    }
+    async save() {
+        await this.props.record.save();
     }
 }
 

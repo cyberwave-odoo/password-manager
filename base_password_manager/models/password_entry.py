@@ -26,6 +26,14 @@ class PasswordEntry(models.Model):
 
     key_ids = fields.One2many('password.key', 'password_entry_id', string='Encrypted Keys')
     share_ids = fields.One2many('password.share', 'password_entry_id', string='Shares')
+    
+    password_salt = fields.Char(string='Password Salt', compute='_compute_password_salt', store=True)
+    
+    def _compute_password_salt(self):
+        """Compute a unique salt for each password"""
+        for user in self:
+            if not user.password_salt:
+                user.password_salt = os.urandom(32).hex()
 
 
 

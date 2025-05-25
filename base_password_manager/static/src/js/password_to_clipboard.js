@@ -1,6 +1,7 @@
 import { registry } from "@web/core/registry";
 
 import { _t } from "@web/core/l10n/translation";
+import { user } from "@web/core/user";
 // Master password management
 const MASTER_PASSWORD_KEY = 'master_key';
 
@@ -39,8 +40,8 @@ registry.category("actions").add("copy_to_clipboard", async (env, context) => {
         console.log("Getting user salt");
         const orm = env.services.orm;
         console.log(recordId)
-        const salt = await orm.call("res.users", "get_user_salt", [user.userId]);
-        console.log("Salt received:", salt);
+        const salt = await orm.call("res.users", "read", [user.userId, ["password_salt"]]);
+        console.log("Salt received:", salt[0].password_salt);
 
         // Read the record to get the encrypted password
         const recordData = await orm.call("password.entry", "read", [recordId, ["encrypted_password"]]);

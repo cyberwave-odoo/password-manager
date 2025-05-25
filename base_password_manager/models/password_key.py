@@ -15,8 +15,7 @@ class PasswordKey(models.Model):
     password_entry_id = fields.Many2one('password.entry', string='Password Entry', required=True, ondelete='cascade')
     user_id = fields.Many2one('res.users', string='User', required=True, default=lambda self: self.env.user)
     encrypted_key = fields.Text(string='Encrypted Symmetric Key', required=True)
-    version = fields.Integer(string='Version', default=1)
-    last_used = fields.Datetime(string='Last Used')
+    iv = fields.Char(string='Initialization Vector', required=True, help='IV used for encryption')
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     
     user_public_key_id = fields.Many2one(

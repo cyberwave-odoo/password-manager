@@ -2,6 +2,7 @@
 
 import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
+import { user } from "@web/core/user";
 
 export class PasswordService {
     constructor(env, services) {
@@ -13,7 +14,15 @@ export class PasswordService {
         this.notification = services.notification;
     }
     
-
+    async getUserSalt() {
+        try {
+            const userId = user.userId;
+            const userData = await this.orm.read("res.users", [userId], ["password_salt"]);
+            return Uint8Array.fromHex(userData[0].password_salt) ;
+        } catch (error) {
+            throw error;
+        }
+    }
     /**
      * Password Entry Operations
      */
