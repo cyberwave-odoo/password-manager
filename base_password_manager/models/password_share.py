@@ -44,12 +44,6 @@ class PasswordShare(models.Model):
         """Save the record"""
         return True
 
-    def action_extend_access(self, new_expiry_date):
-        """Extend access to shared password"""
-        if new_expiry_date < fields.Datetime.now():
-            raise ValidationError(_('New expiry date must be in the future!'))
-        self.unlink()
-        return True
 
     @api.model
     def _cron_check_expired_shares(self):
