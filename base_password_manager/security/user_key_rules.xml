@@ -1,0 +1,36 @@
+<odoo>
+    <record id="user_private_key_own_rule" model="ir.rule">
+        <field name="name">User can only access their own private key</field>
+        <field name="model_id" ref="base_password_manager.model_user_private_key"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+
+    <!-- Allow all users to read all public keys -->
+    <record id="user_public_key_read_rule" model="ir.rule">
+        <field name="name">All users can read all public keys</field>
+        <field name="model_id" ref="base_password_manager.model_user_public_key"/>
+        <field name="domain_force">[(1,'=',1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="True"/>
+        <field name="perm_write" eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!-- Only allow users to write/create/unlink their own public key -->
+    <record id="user_public_key_own_write_rule" model="ir.rule">
+        <field name="name">User can write/create/unlink their own public key</field>
+        <field name="model_id" ref="base_password_manager.model_user_public_key"/>
+        <field name="domain_force">[('user_id', '=', user.id)]</field>
+        <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read" eval="False"/>
+        <field name="perm_write" eval="True"/>
+        <field name="perm_create" eval="True"/>
+        <field name="perm_unlink" eval="True"/>
+    </record>
+</odoo>

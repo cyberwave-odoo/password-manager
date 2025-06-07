@@ -17,8 +17,6 @@ export class EncryptedPasswordField extends CharField {
         this.dialog = useService("dialog");
         this.passwordService = useService("password_service");
         this.passwordEncryption = useService("password_encryption");
-        
-
     }
 
     async onChange(ev) {
@@ -44,6 +42,7 @@ export class EncryptedPasswordField extends CharField {
             return;
         }
         else {
+            // here check if user has keys
             if (!recordId) {
                 console.log("No record ID, going further");
                 // Call the 'write' method on the 'password.entry' model
@@ -54,13 +53,6 @@ export class EncryptedPasswordField extends CharField {
                 
             }
             else {
-                //await this.orm.call("password.entry", "write", [recordId, { [this.props.name]: newValue }]);
-                //if (this.props.save) {
-                //    this.props.save();
-                //}
-                //else if (this.props.record.save) {
-                //    this.props.record.save();
-                //}
                 ev.target.value = "existing_write_value"; // Set a new value for the input field 
                  
             }

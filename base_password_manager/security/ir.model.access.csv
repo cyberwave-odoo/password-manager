@@ -3,4 +3,4 @@ access_password_entry_user,password.entry.user,model_password_entry,base.group_u
 access_password_share_user,password.share.user,model_password_share,base.group_user,1,1,1,1
 access_password_key_user,password.key.user,model_password_key,group_password_key_user,1,1,1,1
 access_user_public_key,access_user_public_key,model_user_public_key,base.group_user,1,1,1,1
-access_user_private_key,user.private.key,model_user_private_key,,1,1,1,1
+access_user_private_key,user.private.key,model_user_private_key,base.group_user,1,1,1,1

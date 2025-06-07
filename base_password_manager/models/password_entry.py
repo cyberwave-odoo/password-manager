@@ -23,7 +23,8 @@ class PasswordEntry(models.Model):
     notes = fields.Text(string='Notes')
     user_id = fields.Many2one('res.users', string='Owner', default=lambda self: self.env.user)
     company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
-
+    iv = fields.Char(string='IV', readonly=True, help='IV used for encryption')
+    
     key_ids = fields.One2many('password.key', 'password_entry_id', string='Encrypted Keys')
     share_ids = fields.One2many('password.share', 'password_entry_id', string='Shares')
     

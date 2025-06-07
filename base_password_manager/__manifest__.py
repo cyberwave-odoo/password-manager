@@ -22,7 +22,7 @@
         'security/password_manager_security.xml',
         'security/password_key_security.xml',
         'security/ir.model.access.csv',
-        'security/user_private_key_rules.xml',
+        'security/user_key_rules.xml',
         'views/password_entry_views.xml',
         'views/password_share_views.xml',
         'views/menu_views.xml',

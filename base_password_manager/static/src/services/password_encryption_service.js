@@ -4,15 +4,7 @@ import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 
 
-const MASTER_PASSWORD_KEY = 'master_key';
 
-function getMasterPassword() {
-    return sessionStorage.getItem(MASTER_PASSWORD_KEY);
-}
-
-function setMasterPassword(password) {
-    sessionStorage.setItem(MASTER_PASSWORD_KEY, password);
-}
 
 // TODO is derive symetric key, the generate asym key, then generate password symetric key
 // Then encrypt with symetric key password and store it
@@ -43,14 +35,18 @@ export class EncryptionService {
         return dec.decode(message);
     }
 
+    async generateIV() {
+        return window.crypto.getRandomValues(new Uint8Array(16));
+    }
+
     /*
     Get the encoded message, encrypt it and display a representation
     of the ciphertext in the "Ciphertext" element.
     */
     async encryptSymetric(key, iv, message) {
-        let encoded = getMessageEncoding(message);
+        let encoded = await this.getMessageEncoding(message);
         // The iv must never be reused with a given key.
-        ciphertext = await window.crypto.subtle.encrypt(
+        let ciphertext = await window.crypto.subtle.encrypt(
         {
             name: this.algo_symetric,
             iv
@@ -66,7 +62,7 @@ export class EncryptionService {
     Fetch the ciphertext and decrypt it.
     Write the decrypted message into the "Decrypted" box.
     */
-    async decryptSymectric(key, iv, ciphertext) {
+    async decryptSymetric(key, iv, ciphertext) {
         let decrypted = await window.crypto.subtle.decrypt(
         {
             name: this.algo_symetric,
@@ -76,44 +72,75 @@ export class EncryptionService {
         ciphertext
         );
         
-        return this.getMessageDecoding(decrypted);
+        return await this.getMessageDecoding(decrypted);
+    }
+
+    async decryptAsymetric(key, ciphertext) {
+        let decrypted = await window.crypto.subtle.decrypt(
+            {
+                name: this.algo_asymetric,
+            },
+            key, ciphertext);
+        return decrypted;
+    }
+
+    async encryptAsymetric(key, message) {
+        //let encoded = await this.getMessageEncoding(message);  
+        return window.crypto.subtle.encrypt(
+            {
+                name: this.algo_asymetric,
+            },
+            key, message);
     }
 
     async generateSymetricKey() {
-        return crypto.subtle.generateKey(
+        return await window.crypto.subtle.generateKey(
             {
                 name: this.algo_symetric,
-                length: this.key_length
+                length: this.key_length_sym
             },
             true,
             ["encrypt", "decrypt", "wrapKey", "unwrapKey"]
         );
     }
 
-    async wrapAsymetric(publicKey, message) {
-        let encoded = this.getMessageEncoding(message);
-        let ciphertext = await window.crypto.subtle.encrypt(
-            {
-                name: this.algo_asymetric,
-            },
-            publicKey,
-            encoded
-        );
-
-        return ciphertext;
+    async wrapSymetric(key, message) {
+        return window.crypto.subtle.wrapKey("raw", message, key, this.algo_symetric);;
     }
 
-    async unwrapAsymetric(privateKey, ciphertext) {
-        let decrypted = await window.crypto.subtle.decrypt(
-            {
-                name: this.algo_asymetric,
-            },
-            privateKey,
-            ciphertext
-        );
-
-        return this.getMessageDecoding(decrypted);
+    async unwrapSymetric(key, ciphertext) {
+        return window.crypto.subtle.unwrapKey("raw", ciphertext, key, this.algo_symetric);
     }
+    
+
+    async wrapAsymetric(key, iv, message) {
+        return window.crypto.subtle.wrapKey("raw", message, key, {
+            name: this.algo_asymetric,
+            iv,
+          });
+    }
+
+    async unwrapAsymetric(key, iv, message) {
+        return await window.crypto.subtle.unwrapKey(
+            "raw", // import format
+            message, // ArrayBuffer representing key to unwrap
+            key, // CryptoKey representing key encryption key
+            {
+              // algorithm params for key encryption key
+              name: this.algo_asymetric,
+              iv: iv,
+            },
+            {
+              // algorithm params for key to unwrap
+              name: this.algo_symetric,
+              hash: "SHA-256",
+            },
+            true, // extractability of key to unwrap
+            ["wrapKey", "unwrapKey","encrypt","decrypt"], // key usages for key to unwrap
+          );
+        }
+
+    
 
     async generateKeyPair() {
         return window.crypto.subtle.generateKey(
@@ -124,7 +151,7 @@ export class EncryptionService {
                 hash: "SHA-256" ,
             },
             true,
-            ["wrapKey", "unwrapKey"]
+            ["wrapKey", "unwrapKey","encrypt","decrypt"]
         ).then((keyPair) => {
             return {
                 publicKey: keyPair.publicKey,
@@ -132,6 +159,43 @@ export class EncryptionService {
             };
         }
         );
+    }
+    async getUserPublicKeys() {
+        return await this.orm.call("user.public.key", "search_read", [
+            [['user_id', '=', user.userId]],
+            ['id', 'public_key']
+        ]);
+    }
+    async getUserPrivateKeys() {
+        return await this.orm.call("user.private.key", "search_read", [
+            [['user_id', '=', user.userId]],
+            ['id', 'private_key']
+        ]);
+    }
+    async storeUserKey(newKey, keyModel) {
+        let Key = await this.orm.call(keyModel, "search_read", {
+            user_id: user.userId,
+        });
+        data = {}
+        if (keyModel == "user.public.key") {
+            data.public_key = newKey;
+        }
+        else {
+            data.private_key = newKey;
+        }
+        if (Key) {
+            data.id = Key.id;
+            await this.orm.call(keyModel, "write", data);
+        }
+        else {
+            data.user_id = user.userId;
+            await this.orm.call(keyModel, "create", data);
+        }
+    }
+    
+    async storeUserKeys(publicKey, privateKey) {
+        await this.storeUserKey(publicKey, "user.public.key");
+        await this.storeUserKey(privateKey, "user.private.key");
     }
 
     async deriveKeyFromPassword(password, salt) {

@@ -13,19 +13,22 @@ function setMasterPassword(password) {
     sessionStorage.setItem(MASTER_PASSWORD_KEY, password);
 }
 
+
+
 registry.category("actions").add("copy_to_clipboard", async (env, context) => {
     console.log("Starting copy to clipboard action");
     console.log("Context:", context);
-
+    const password_service = env.services.password_service;
+    const password_encryption = env.services.password_encryption;
     const recordId = JSON.parse(context._originalAction).context.active_ids;
     console.log(recordId);
 
-    let masterPassword = getMasterPassword();
+    let masterPassword = password_service.getMasterPassword();
     if (!masterPassword) {
         console.log("No cached master password, prompting user");
-        masterPassword = await prompt(_t("Please enter your master password:"));
+        masterPassword = prompt(_t("Please enter your master password:"));
         if (masterPassword) {
-            setMasterPassword(masterPassword);
+            password_service.setMasterPassword(masterPassword);
         }
     } else {
         console.log("Using cached master password");
@@ -43,6 +46,20 @@ registry.category("actions").add("copy_to_clipboard", async (env, context) => {
         const salt = await orm.call("res.users", "read", [user.userId, ["password_salt"]]);
         console.log("Salt received:", salt[0].password_salt);
 
+        const pwd = 'pwd';
+        let symkey1 = await password_encryption.generateSymetricKey();
+        let iv1 = await password_encryption.generateIV();
+        let encrypted_pwd = await password_encryption.encryptSymetric(symkey1, iv1, pwd); //store encyrpted_pwd and iv1
+
+        let asymkey = await password_encryption.generateKeyPair();
+        console.log("encypted",encrypted_pwd);
+        console.log("symkey",symkey1);
+        let encrypted_sym_key = await password_encryption.wrapAsymetric(asymkey.publicKey, iv1, symkey1);
+        let decrypted_sym_key = await password_encryption.unwrapAsymetric(asymkey.privateKey, iv1, encrypted_sym_key);
+        console.log("decrypted_sym_key", decrypted_sym_key);
+        let decrypted_pwd = await password_encryption.decryptSymetric(decrypted_sym_key, iv1, encrypted_pwd);
+        console.log("Decrypted pwd:", decrypted_pwd);
+        
         // Read the record to get the encrypted password
         const recordData = await orm.call("password.entry", "read", [recordId, ["encrypted_password"]]);
         console.log("Record data:", recordData);
