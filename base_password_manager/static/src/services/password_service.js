@@ -12,6 +12,16 @@ export class PasswordService {
         this.env = env;
         this.orm = services.orm;
         this.notification = services.notification;
+        this.MASTER_PASSWORD_KEY = 'master_key';
+    }
+
+
+    getMasterPassword() {
+        return sessionStorage.getItem(this.MASTER_PASSWORD_KEY);
+    }
+
+    setMasterPassword(password) {
+        sessionStorage.setItem(this.MASTER_PASSWORD_KEY, password);
     }
     
     async getUserSalt() {

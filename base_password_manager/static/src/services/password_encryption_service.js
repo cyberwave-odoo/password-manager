@@ -199,7 +199,7 @@ export class EncryptionService {
     }
 
     async deriveKeyFromPassword(password, salt) {
-        const encodedPassword = this.getMessageEncoding(password);
+        const encodedPassword = await this.getMessageEncoding(password);
         const keyMaterial = await crypto.subtle.importKey(
             "raw",
             encodedPassword,
@@ -207,18 +207,18 @@ export class EncryptionService {
             false,
             ["deriveBits", "deriveKey"]
         );
-
-        return crypto.subtle.deriveKey(
+        let encoded_salt = await this.getMessageEncoding(salt);
+        return await crypto.subtle.deriveKey(
             {
-            name: "PBKDF2",
-            salt: salt,
-            iterations: 100000,
-            hash: "SHA-256"
-            },
-            keyMaterial,
-            { name: this.algo_asymetric, length: this.key_length_sym },
-            false,
-            ["wrapKey", "unwrapKey", "encrypt", "decrypt"]
+                "name": "PBKDF2",
+                salt: encoded_salt, 
+                "iterations": 100000,
+                "hash": "SHA-256"
+              },
+              keyMaterial,
+              { "name": "AES-GCM", "length": 256},
+              true,
+              ["wrapKey", "unwrapKey","encrypt","decrypt"]
         );
     }
 

@@ -6,6 +6,6 @@ class UserPublicKey(models.Model):
 
     user_id = fields.Many2one('res.users', string='User', required=True, ondelete='cascade', index=True)
     public_key = fields.Text(string='Public Key', required=True)
-    private_key_id = fields.Many2one('user.private.key', string='private_key')
+    private_key_id = fields.One2many('user.private.key', 'public_key_id', string='Private Key')
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     active = fields.Boolean('active')
