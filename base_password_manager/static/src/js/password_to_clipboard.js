@@ -16,53 +16,46 @@ function setMasterPassword(password) {
 
 
 registry.category("actions").add("copy_to_clipboard", async (env, context) => {
-    console.log("Starting copy to clipboard action");
-    console.log("Context:", context);
+
     const password_service = env.services.password_service;
     const password_encryption = env.services.password_encryption;
     const recordId = JSON.parse(context._originalAction).context.active_ids;
-    console.log(recordId);
 
+    
     let masterPassword = password_service.getMasterPassword();
     if (!masterPassword) {
-        console.log("No cached master password, prompting user");
         masterPassword = prompt(_t("Please enter your master password:"));
         if (masterPassword) {
             password_service.setMasterPassword(masterPassword);
         }
-    } else {
-        console.log("Using cached master password");
-    }
+    } 
     
     if (!masterPassword) {
-        console.log("No master password provided");
         return;
     }
 
     try {
-        console.log("Getting user salt");
-        const orm = env.services.orm;
-        console.log(recordId)
-        const salt = await orm.call("res.users", "read", [user.userId, ["password_salt"]]);
-        console.log("Salt received:", salt[0].password_salt);
 
+        const orm = env.services.orm;
+        const salt = await orm.call("res.users", "read", [user.userId, ["password_salt"]]);
+        let derivedkey = await password_encryption.deriveKeyFromPassword(masterPassword, salt[0].password_salt);
+        console.log(await crypto.subtle.exportKey("jwk",derivedkey),'derived');
         const pwd = 'pwd';
         let symkey1 = await password_encryption.generateSymetricKey();
         let iv1 = await password_encryption.generateIV();
         let encrypted_pwd = await password_encryption.encryptSymetric(symkey1, iv1, pwd); //store encyrpted_pwd and iv1
 
         let asymkey = await password_encryption.generateKeyPair();
-        console.log("encypted",encrypted_pwd);
-        console.log("symkey",symkey1);
-        let encrypted_sym_key = await password_encryption.wrapAsymetric(asymkey.publicKey, iv1, symkey1);
-        let decrypted_sym_key = await password_encryption.unwrapAsymetric(asymkey.privateKey, iv1, encrypted_sym_key);
-        console.log("decrypted_sym_key", decrypted_sym_key);
-        let decrypted_pwd = await password_encryption.decryptSymetric(decrypted_sym_key, iv1, encrypted_pwd);
-        console.log("Decrypted pwd:", decrypted_pwd);
-        
+
+        await password_encryption.storeUserKeys(asymkey.publicKey, asymkey.privateKey, derivedkey, iv1);
+
+        let activekye = await password_encryption.getActiveKeyPair(derivedkey, iv1);
+        let encrypted_sym_key = await password_encryption.wrapAsymetric(activekye.publicKey, symkey1, iv1);
+        let decrypted_sym_key = await password_encryption.unwrapAsymetric(activekye.privateKey, encrypted_sym_key, iv1);
+        let decrypted_pwd = await password_encryption.decryptSymetric(decrypted_sym_key, encrypted_pwd, iv1);
+        console.log(decrypted_pwd);
         // Read the record to get the encrypted password
         const recordData = await orm.call("password.entry", "read", [recordId, ["encrypted_password"]]);
-        console.log("Record data:", recordData);
         
         if (!recordData) {
             throw new Error(_t("Failed to retrieve password record"));
@@ -76,16 +69,11 @@ registry.category("actions").add("copy_to_clipboard", async (env, context) => {
             throw new Error(_t("No encrypted password found in record"));
         }
 
-        console.log("Decrypting password");
         const decryptedPassword = await env.services.password_encryption.decryptPassword(
             recordData[0].encrypted_password,
             masterPassword,
             salt
         );
-        console.log("Password decrypted successfully");
-
-        // Create a temporary input element
-        console.log("Creating temporary input element");
         const tempInput = document.createElement('input');
         tempInput.value = decryptedPassword;
         document.body.appendChild(tempInput);

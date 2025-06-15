@@ -8,4 +8,4 @@ class UserPublicKey(models.Model):
     public_key = fields.Text(string='Public Key', required=True)
     private_key_id = fields.One2many('user.private.key', 'public_key_id', string='Private Key')
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
-    active = fields.Boolean('active')
+    active = fields.Boolean('active', default=True)
