@@ -11,8 +11,10 @@ class UserPrivateKey(models.Model):
     user_id = fields.Many2one('res.users', string='User', required=True, ondelete='cascade', index=True)
     private_key = fields.Text(string='Private Key', required=True)
     public_key_id = fields.Many2one('user.public.key', string='Public Key', required=True, ondelete='cascade', index=True)
+
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     active = fields.Boolean('active', default=True)
+    
 
 
     _sql_constraints = [
@@ -26,7 +28,7 @@ class UserPrivateKey(models.Model):
                 raise ValidationError(_('The private key must belong to the same user as its public key.'))
 
     @api.model
-    def create_key_pair(self, public_key, private_key):
+    def create_key_pair(self, public_key, private_key, iv):
         """
         Create a new key pair for a user, ensuring no active keys exist for that user.
         
@@ -40,21 +42,6 @@ class UserPrivateKey(models.Model):
         """
         user_id = self.env.user.id
         # Deactivate any existing active keys for the user
-        existing_public_keys = self.env['user.public.key'].search([
-            ('user_id', '=', user_id),
-            ('active', '=', True)
-        ])
-        if existing_public_keys:
-            existing_public_keys.write({'active': False})
-            self.env['user.private.key'].search([
-                ('public_key_id', 'in', existing_public_keys.ids)
-            ]).write({'active': False})
-
-        # Create the public key
-        public_key_record = self.env['user.public.key'].create({
-            'user_id': user_id,
-            'public_key': public_key,
-        })
         
         existing_private_keys = self.env['user.private.key'].search([
             ('user_id', '=', user_id),
@@ -63,10 +50,13 @@ class UserPrivateKey(models.Model):
         
         if existing_private_keys:
             existing_private_keys.write({'active': False})
-            self.env['user.private.key'].search([
-                ('public_key_id', 'in', existing_private_keys.ids)
-            ]).write({'active': False})
-
+            existing_private_keys.mapped("public_key_id").write({'active': False})
+            
+        public_key_record = self.env['user.public.key'].create({
+            'user_id': user_id,
+            'public_key': public_key,
+            'iv': iv,
+        })
         # Create the private key
         private_key_record = self.env['user.private.key'].create({
             'user_id': user_id,
@@ -77,6 +67,7 @@ class UserPrivateKey(models.Model):
         return {
             'public_key': public_key_record,
             'private_key': private_key_record,
+            'iv': public_key_record.iv
         }
 
     @api.model
@@ -91,23 +82,21 @@ class UserPrivateKey(models.Model):
             dict: Dictionary containing the active public and private key records, or None if no active keys exist
         """
         user_id = self.env.user.id
-        public_key = self.env['user.public.key'].search([
+        private_key = self.search([
             ('user_id', '=', user_id),
-            ('active', '=', True)
-        ], limit=1)
-        
-        if not public_key:
-            return None
-            
-        private_key = self.env['user.private.key'].search([
-            ('public_key_id', '=', public_key.id),
             ('active', '=', True)
         ], limit=1)
         
         if not private_key:
             return None
             
+        public_key = private_key.public_key_id
+        
+        if not public_key:
+            return None
+            
         return {
             'public_key': public_key.public_key,
             'private_key': private_key.private_key,
+            'iv': public_key.iv
         }

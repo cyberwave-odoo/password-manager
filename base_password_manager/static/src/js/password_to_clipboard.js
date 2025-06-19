@@ -3,15 +3,6 @@ import { registry } from "@web/core/registry";
 import { _t } from "@web/core/l10n/translation";
 import { user } from "@web/core/user";
 // Master password management
-const MASTER_PASSWORD_KEY = 'master_key';
-
-function getMasterPassword() {
-    return sessionStorage.getItem(MASTER_PASSWORD_KEY);
-}
-
-function setMasterPassword(password) {
-    sessionStorage.setItem(MASTER_PASSWORD_KEY, password);
-}
 
 
 
@@ -21,73 +12,52 @@ registry.category("actions").add("copy_to_clipboard", async (env, context) => {
     const password_encryption = env.services.password_encryption;
     const recordId = JSON.parse(context._originalAction).context.active_ids;
 
-    
-    let masterPassword = password_service.getMasterPassword();
-    if (!masterPassword) {
-        masterPassword = prompt(_t("Please enter your master password:"));
-        if (masterPassword) {
-            password_service.setMasterPassword(masterPassword);
-        }
-    } 
-    
-    if (!masterPassword) {
-        return;
-    }
+
 
     try {
 
-        const orm = env.services.orm;
-        const salt = await orm.call("res.users", "read", [user.userId, ["password_salt"]]);
-        let derivedkey = await password_encryption.deriveKeyFromPassword(masterPassword, salt[0].password_salt);
-        console.log(await crypto.subtle.exportKey("jwk",derivedkey),'derived');
+        //let derivedkey = await password_encryption.derivedKey();
+
         const pwd = 'pwd';
         let symkey1 = await password_encryption.generateSymetricKey();
+        
         let iv1 = await password_encryption.generateIV();
         let encrypted_pwd = await password_encryption.encryptSymetric(symkey1, iv1, pwd); //store encyrpted_pwd and iv1
+        
+        //await password_service.updatePasswordEntry(recordId,{
+        //    'encrypted_password': pwd,
+        //    'iv': await password_encryption.Uint8ArrayToBase64(iv1),
+        //});
 
-        let asymkey = await password_encryption.generateKeyPair();
+        //let asymkey = await password_encryption.generateKeyPair();
 
-        await password_encryption.storeUserKeys(asymkey.publicKey, asymkey.privateKey, derivedkey, iv1);
+        //await password_encryption.storeUserKeys(asymkey.publicKey, asymkey.privateKey, derivedkey, iv1);
+        //console.log(await password_encryption.Uint8ArrayToBase64(iv1));
+        let activekye = await password_encryption.getActiveKeyPair();
 
-        let activekye = await password_encryption.getActiveKeyPair(derivedkey, iv1);
-        let encrypted_sym_key = await password_encryption.wrapAsymetric(activekye.publicKey, symkey1, iv1);
-        let decrypted_sym_key = await password_encryption.unwrapAsymetric(activekye.privateKey, encrypted_sym_key, iv1);
-        let decrypted_pwd = await password_encryption.decryptSymetric(decrypted_sym_key, encrypted_pwd, iv1);
+        console.log(activekye ,'active');
+        let encrypted_sym_key = await password_encryption.wrapAsymetric(activekye.publicKey, symkey1);
+        await password_service.updatePasswordEntry(recordId,{
+            'encrypted_password': await password_encryption.arrayBufferToBase64(encrypted_pwd),
+            'iv': await password_encryption.Uint8ArrayToBase64(iv1),
+        });
+        let entry = await password_service.readPasswordEntry(recordId, ['encrypted_password','iv']);
+        let pword = await password_encryption.base64ToArrayBuffer(entry[0].encrypted_password);
+        console.log(recordId);
+        let symkey = await password_service.createPasswordKey([{
+            'password_entry_id': recordId[0],
+            'encrypted_key': await password_encryption.arrayBufferToBase64(encrypted_sym_key),
+            'user_public_key_id': 1
+        }]);
+        console.log(symkey);
+
+
+        let decrypted_sym_key = await password_encryption.unwrapAsymetric(activekye.privateKey, encrypted_sym_key);
+
+        let decrypted_pwd = await password_encryption.decryptSymetric(decrypted_sym_key, pword, await password_encryption.Base64ToUint8Array(entry[0].iv));
         console.log(decrypted_pwd);
         // Read the record to get the encrypted password
-        const recordData = await orm.call("password.entry", "read", [recordId, ["encrypted_password"]]);
-        
-        if (!recordData) {
-            throw new Error(_t("Failed to retrieve password record"));
-        }
-        
-        if (recordData.length === 0) {
-            throw new Error(_t("Password record not found"));
-        }
-        
-        if (!recordData[0].encrypted_password) {
-            throw new Error(_t("No encrypted password found in record"));
-        }
-
-        const decryptedPassword = await env.services.password_encryption.decryptPassword(
-            recordData[0].encrypted_password,
-            masterPassword,
-            salt
-        );
-        const tempInput = document.createElement('input');
-        tempInput.value = decryptedPassword;
-        document.body.appendChild(tempInput);
-        tempInput.select();
-        
-        console.log("Executing copy command");
-        const copySuccess = document.execCommand('copy');
-        document.body.removeChild(tempInput);
-        
-        if (!copySuccess) {
-            throw new Error("Failed to copy to clipboard");
-        }
-
-        console.log("Copy successful, showing notification");
+        navigator.clipboard.writeText(decrypted_pwd);
         env.services.notification.add(_t("Success"), {
             type: 'success',
             message: _t("Password copied to clipboard"),

@@ -13,6 +13,8 @@ export class PasswordService {
         this.orm = services.orm;
         this.notification = services.notification;
         this.MASTER_PASSWORD_KEY = 'master_key';
+        this.DERIVED_KEY = 'derived_key';
+        this.password_encryption = services.password_encryption;
     }
 
 
@@ -23,12 +25,19 @@ export class PasswordService {
     setMasterPassword(password) {
         sessionStorage.setItem(this.MASTER_PASSWORD_KEY, password);
     }
+
+    getDerivedKey() {
+        return sessionStorage.getItem(this.DERIVED_KEY);
+    }
+
+    setDerivedKey(key) {
+        sessionStorage.setItem(this.DERIVED_KEY, key);
+    }
     
     async getUserSalt() {
         try {
-            const userId = user.userId;
-            const userData = await this.orm.read("res.users", [userId], ["password_salt"]);
-            return Uint8Array.fromHex(userData[0].password_salt) ;
+            const salt = await this.orm.read("res.users", [user.userId], ["password_salt"]);
+            return salt[0].password_salt;
         } catch (error) {
             throw error;
         }
@@ -47,7 +56,7 @@ export class PasswordService {
 
     async updatePasswordEntry(entryId, data) {
         try {
-            await this.orm.write("password.entry", [entryId], data);
+            await this.orm.write("password.entry", entryId, data);
         } catch (error) {
             throw error;
         }
@@ -55,7 +64,7 @@ export class PasswordService {
 
     async deletePasswordEntry(entryId) {
         try {
-            await this.orm.unlink("password.entry", [entryId]);
+            await this.orm.unlink("password.entry", entryId);
         } catch (error) {
             throw error;
         }
@@ -75,7 +84,7 @@ export class PasswordService {
 
     async updatePasswordKey(keyId, data) {
         try {
-            await this.orm.write("password.key", [keyId], data);
+            await this.orm.write("password.key", keyId, data);
         } catch (error) {
             throw error;
         }
@@ -83,18 +92,24 @@ export class PasswordService {
 
     async deletePasswordKey(keyId) {
         try {
-            await this.orm.unlink("password.key", [keyId]);
+            await this.orm.unlink("password.key", keyId);
         } catch (error) {
             throw error;
         }
     }
 
-    /**
-     * Search Operations
-     */
+    
     async searchPasswordEntries(domain = [], fields = []) {
         try {
             return await this.orm.searchRead("password.entry", domain, fields);
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    async readPasswordEntry(keyId, fields = []) {
+        try {
+            return await this.orm.read("password.entry", keyId, fields);
         } catch (error) {
             throw error;
         }

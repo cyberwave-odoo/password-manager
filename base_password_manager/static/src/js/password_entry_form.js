@@ -49,8 +49,6 @@ export class EncryptedPasswordField extends CharField {
                 //this.props.record.data[this.props.name] = "tototototo";
                 console.log(oldValue, newValue);
                 ev.target.value = "new_value"; // Set a new value for the input field
- 
-                
             }
             else {
                 ev.target.value = "existing_write_value"; // Set a new value for the input field 

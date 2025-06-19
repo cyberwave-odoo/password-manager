@@ -13,10 +13,11 @@ import { user } from "@web/core/user";
 export class EncryptionService {
     constructor(env, services) {
         this.setup(env, services);
-        this.algo_symetric = "AES-CBC";
+        this.algo_symetric = "AES-GCM";
         this.algo_asymetric = "RSA-OAEP";
         this.key_length_sym = 256; // bits
         this.key_length_asym = 4096; // bits
+        this.iv_length = 16;
     }
 
     setup(env, services) {
@@ -36,7 +37,7 @@ export class EncryptionService {
     }
 
     async generateIV() {
-        return window.crypto.getRandomValues(new Uint8Array(16));
+        return window.crypto.getRandomValues(new Uint8Array(this.iv_length));
     }
 
     /*
@@ -133,14 +134,14 @@ export class EncryptionService {
         }
     
 
-    async wrapAsymetric(key, message, iv) {
+    async wrapAsymetric(key, message) {
         return window.crypto.subtle.wrapKey("jwk", message, key, {
             name: this.algo_asymetric,
-            iv,
+
           });
     }
 
-    async unwrapAsymetric(key, message, iv) {
+    async unwrapAsymetric(key, message) {
         return await window.crypto.subtle.unwrapKey(
             "jwk", // import format
             message, // ArrayBuffer representing key to unwrap
@@ -148,7 +149,6 @@ export class EncryptionService {
             {
               // algorithm params for key encryption key
               name: this.algo_asymetric,
-              iv: iv,
             },
             {
               // algorithm params for key to unwrap
@@ -181,25 +181,35 @@ export class EncryptionService {
         );
     }
 
-    async arrayBufferToBase64(buffer) {
-        const bytes = new Uint8Array(buffer);
+    async Uint8ArrayToBase64(bytes) {
         let binary = '';
         for (let b of bytes) binary += String.fromCharCode(b);
         return btoa(binary);
-        }
-        
-    async base64ToArrayBuffer(base64) {
-        const binary = atob(base64);
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i);
-        }
-        return bytes.buffer;
+    }
+
+    async arrayBufferToBase64(buffer) {
+        const bytes = new Uint8Array(buffer);
+        return await this.Uint8ArrayToBase64(bytes);
         }
 
     
+
+    async base64ToArrayBuffer(base64) {
+        return (await this.Base64ToUint8Array(base64)).buffer;
+        }
+
+    async Base64ToUint8Array(base64) {
+        const binary = atob(base64); // decode Base64 to binary string
+        const bytes = new Uint8Array(binary.length);
+        for (let i = 0; i < binary.length; i++) {
+            bytes[i] = binary.charCodeAt(i); // get char code (0–255)
+        }
+        return bytes;
+    }
+
+
+    
     async storeUserKeys(publicKey, privateKey, wrapKey, iv) {
-        console.log(privateKey);
         let exported_public = await crypto.subtle.exportKey(
             "jwk",
             publicKey
@@ -209,13 +219,13 @@ export class EncryptionService {
             privateKey,
             iv
         );
+        console.log('iv',iv,this.Uint8ArrayToBase64(iv));
 
         let exported_private = await this.arrayBufferToBase64(privateKey_wrapped);
-        console.log("storing keys");
         await this.orm.call(
             'user.private.key',
             'create_key_pair',
-            [exported_public, exported_private]
+            [exported_public, exported_private, await this.Uint8ArrayToBase64(iv)]
         );
     }
 
@@ -225,14 +235,17 @@ export class EncryptionService {
       .replace(/\bFalse\b/g, 'false') // Replace False with false
       .replace(/\bNone\b/g, 'null'))
     }
-    async getActiveKeyPair(wrapKey, iv) {
+
+    async getActiveKeyPair() {
         let keys = await this.orm.call(
             'user.private.key',
             'get_active_key_pair',
             []
         );
+        let derivedKey = await this.derivedKey();
         if (keys) {
-            const params = {
+            let iv = await this.Base64ToUint8Array(keys.iv); 
+            const params = {    
                 name: this.algo_asymetric,
                 hash: "SHA-256",
             }
@@ -246,20 +259,22 @@ export class EncryptionService {
             );
             let encoded_private = await this.base64ToArrayBuffer(keys.private_key);
 
-            let private_key = await this.unwrapSymetric(wrapKey, encoded_private, iv);
-            console.log(private_key);
-            console.log("toto")
+            let private_key = await this.unwrapSymetric(derivedKey, encoded_private, iv);
+            
             return {
                 publicKey: public_key,
                 privateKey: private_key
             };
         }
         else {
-            return keys;
-        }
-        
-    }
+            keys = await this.generateKeyPair();
+            let iv = await this.generateIV();
 
+            await this.storeUserKeys(keys.publicKey, keys.privateKey, derivedKey, iv);
+            return keys;
+        }  
+    }
+    
     async deriveKeyFromPassword(password, salt) {
         const encodedPassword = await this.getMessageEncoding(password);
         const keyMaterial = await crypto.subtle.importKey(
@@ -284,6 +299,24 @@ export class EncryptionService {
         );
     }
 
+    async derivedKey() {
+        // this must check that the password entered is appropriate
+        // TODO what happend when the master password is changed?
+        let masterPassword = this.passwordService.getMasterPassword();
+
+        if (!masterPassword) {
+            masterPassword = prompt(_t("Please enter your master password:"));
+            if (masterPassword) {
+                this.passwordService.setMasterPassword(masterPassword);
+            }
+        }
+        if (!masterPassword) {
+            return;
+        }
+        const salt = this.passwordService.getUserSalt();
+        let key = await this.deriveKeyFromPassword(masterPassword, salt);
+        return key;
+    } 
 }
 
 export const encryptionService = {
