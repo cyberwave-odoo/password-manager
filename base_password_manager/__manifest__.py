@@ -31,6 +31,7 @@
     'assets': {
         'web.assets_backend': [
             'base_password_manager/static/src/xml/password_field.xml',
+            'base_password_manager/static/src/services/convert.js',
             'base_password_manager/static/src/services/password_service.js',
             'base_password_manager/static/src/services/password_encryption_service.js',
             'base_password_manager/static/src/js/password_entry_form.js',

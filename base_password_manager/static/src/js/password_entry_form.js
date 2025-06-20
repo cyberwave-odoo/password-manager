@@ -17,6 +17,7 @@ export class EncryptedPasswordField extends CharField {
         this.dialog = useService("dialog");
         this.passwordService = useService("password_service");
         this.passwordEncryption = useService("password_encryption");
+        
     }
 
     async onChange(ev) {

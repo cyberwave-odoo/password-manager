@@ -24,6 +24,7 @@ export class EncryptionService {
         this.env = env;
         this.orm = services.orm;
         this.passwordService = services.password_service;
+        this.convert = services.convert;
     }
 
     async getMessageEncoding(message) {
@@ -113,7 +114,6 @@ export class EncryptionService {
     }
 
     async unwrapSymetric(key, message, iv) {
-        console.log(key,message,iv);
         return await window.crypto.subtle.unwrapKey(
             "jwk", // import format
             message, // ArrayBuffer representing key to unwrap
@@ -181,31 +181,6 @@ export class EncryptionService {
         );
     }
 
-    async Uint8ArrayToBase64(bytes) {
-        let binary = '';
-        for (let b of bytes) binary += String.fromCharCode(b);
-        return btoa(binary);
-    }
-
-    async arrayBufferToBase64(buffer) {
-        const bytes = new Uint8Array(buffer);
-        return await this.Uint8ArrayToBase64(bytes);
-        }
-
-    
-
-    async base64ToArrayBuffer(base64) {
-        return (await this.Base64ToUint8Array(base64)).buffer;
-        }
-
-    async Base64ToUint8Array(base64) {
-        const binary = atob(base64); // decode Base64 to binary string
-        const bytes = new Uint8Array(binary.length);
-        for (let i = 0; i < binary.length; i++) {
-            bytes[i] = binary.charCodeAt(i); // get char code (0–255)
-        }
-        return bytes;
-    }
 
 
     
@@ -219,13 +194,11 @@ export class EncryptionService {
             privateKey,
             iv
         );
-        console.log('iv',iv,this.Uint8ArrayToBase64(iv));
-
-        let exported_private = await this.arrayBufferToBase64(privateKey_wrapped);
-        await this.orm.call(
+        let exported_private = await this.convert.arrayBufferToBase64(privateKey_wrapped);
+        return await this.orm.call(
             'user.private.key',
             'create_key_pair',
-            [exported_public, exported_private, await this.Uint8ArrayToBase64(iv)]
+            [exported_public, exported_private, await this.convert.Uint8ArrayToBase64(iv)]
         );
     }
 
@@ -244,7 +217,7 @@ export class EncryptionService {
         );
         let derivedKey = await this.derivedKey();
         if (keys) {
-            let iv = await this.Base64ToUint8Array(keys.iv); 
+            let iv = await this.convert.Base64ToUint8Array(keys.iv); 
             const params = {    
                 name: this.algo_asymetric,
                 hash: "SHA-256",
@@ -257,20 +230,21 @@ export class EncryptionService {
                 true,
                 ["wrapKey","encrypt",]
             );
-            let encoded_private = await this.base64ToArrayBuffer(keys.private_key);
+            let encoded_private = await this.convert.base64ToArrayBuffer(keys.private_key);
 
             let private_key = await this.unwrapSymetric(derivedKey, encoded_private, iv);
             
             return {
                 publicKey: public_key,
-                privateKey: private_key
+                privateKey: private_key,
+                id: keys.id
             };
         }
         else {
             keys = await this.generateKeyPair();
             let iv = await this.generateIV();
-
-            await this.storeUserKeys(keys.publicKey, keys.privateKey, derivedKey, iv);
+            let storedKeys = await this.storeUserKeys(keys.publicKey, keys.privateKey, derivedKey, iv);
+            keys['id'] = storedKeys.id;
             return keys;
         }  
     }
@@ -320,7 +294,7 @@ export class EncryptionService {
 }
 
 export const encryptionService = {
-    dependencies: ["orm", "password_service"],
+    dependencies: ["orm", "password_service", "convert"],
     start(env, services) {
         return new EncryptionService(env, services);
     },

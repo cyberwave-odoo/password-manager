@@ -14,7 +14,7 @@ export class PasswordService {
         this.notification = services.notification;
         this.MASTER_PASSWORD_KEY = 'master_key';
         this.DERIVED_KEY = 'derived_key';
-        this.password_encryption = services.password_encryption;
+        this.convert = services.convert;
     }
 
 
@@ -42,29 +42,12 @@ export class PasswordService {
             throw error;
         }
     }
-    /**
-     * Password Entry Operations
-     */
-    async createPasswordEntry(data) {
-        try {
-            const entryId = await this.orm.create("password.entry", data);
-            return entryId;
-        } catch (error) {
-            throw error;
-        }
-    }
 
     async updatePasswordEntry(entryId, data) {
         try {
+            data['encrypted_password'] = await this.convert.arrayBufferToBase64(data['encrypted_password']),
+            data['iv'] = await this.convert.Uint8ArrayToBase64(data['iv']),
             await this.orm.write("password.entry", entryId, data);
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    async deletePasswordEntry(entryId) {
-        try {
-            await this.orm.unlink("password.entry", entryId);
         } catch (error) {
             throw error;
         }
@@ -73,11 +56,25 @@ export class PasswordService {
     /**
      * Password Key Operations
      */
-    async createPasswordKey(data) {
+    async createPasswordKey(dataArray) {
         try {
-            const keyId = await this.orm.create("password.key", data);
-            return keyId;
+            if (!Array.isArray(dataArray)) {
+                throw new Error("Input must be an array of records.");
+            }
+
+            // Convert encrypted_key to base64 for each record
+            const transformedData = await Promise.all(
+                dataArray.map(async (record) => ({
+                    ...record,
+                    encrypted_key: await this.convert.arrayBufferToBase64(record.encrypted_key),
+                }))
+            );
+            console.log(transformedData);
+            // Create all password.key records in one ORM call
+            const keyIds = await this.orm.create("password.key", transformedData);
+            return keyIds;
         } catch (error) {
+            console.error("Failed to create password keys:", error);
             throw error;
         }
     }
@@ -98,26 +95,28 @@ export class PasswordService {
         }
     }
 
-    
-    async searchPasswordEntries(domain = [], fields = []) {
+
+    async readPasswordEntry(keyId) {
         try {
-            return await this.orm.searchRead("password.entry", domain, fields);
+            let call = await this.orm.read("password.entry", keyId, ['encrypted_password','iv']);
+            return {
+                'encrypted_password': await this.convert.base64ToArrayBuffer(call[0].encrypted_password),
+                'iv': await this.convert.Base64ToUint8Array(call[0].iv),
+                'id': call[0].id
+            };
+            
         } catch (error) {
             throw error;
         }
     }
 
-    async readPasswordEntry(keyId, fields = []) {
+    async readPasswordKey(keyId) {
         try {
-            return await this.orm.read("password.entry", keyId, fields);
-        } catch (error) {
-            throw error;
-        }
-    }
-
-    async searchPasswordKeys(domain = [], fields = []) {
-        try {
-            return await this.orm.searchRead("password.key", domain, fields);
+            let call = await this.orm.read("password.key", keyId, []);
+            return {
+                'id': call[0].id,
+                'encrypted_key': await this.convert.base64ToArrayBuffer(call[0].encrypted_key)
+            };
         } catch (error) {
             throw error;
         }
@@ -132,7 +131,7 @@ export class PasswordService {
     }
 }
 export const passwordService = {
-    dependencies: ["orm", "notification"],
+    dependencies: ["orm", "notification", "convert"],
     start(env, services) {
         return new PasswordService(env, services);
     },

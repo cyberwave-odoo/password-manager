@@ -10,7 +10,7 @@ class UserPrivateKey(models.Model):
 
     user_id = fields.Many2one('res.users', string='User', required=True, ondelete='cascade', index=True)
     private_key = fields.Text(string='Private Key', required=True)
-    public_key_id = fields.Many2one('user.public.key', string='Public Key', required=True, ondelete='cascade', index=True)
+    public_key_id = fields.Many2one('user.public.key', string='Public Key', required=True, index=True)
 
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)
     active = fields.Boolean('active', default=True)
@@ -57,6 +57,7 @@ class UserPrivateKey(models.Model):
             'public_key': public_key,
             'iv': iv,
         })
+
         # Create the private key
         private_key_record = self.env['user.private.key'].create({
             'user_id': user_id,
@@ -67,7 +68,8 @@ class UserPrivateKey(models.Model):
         return {
             'public_key': public_key_record,
             'private_key': private_key_record,
-            'iv': public_key_record.iv
+            'iv': public_key_record.iv,
+            'id': public_key_record.id
         }
 
     @api.model
@@ -98,5 +100,6 @@ class UserPrivateKey(models.Model):
         return {
             'public_key': public_key.public_key,
             'private_key': private_key.private_key,
-            'iv': public_key.iv
+            'iv': public_key.iv,
+            'id': public_key.id
         }
