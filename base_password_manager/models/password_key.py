@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 class PasswordKey(models.Model):
     _name = 'password.key'
     _description = 'Encrypted Symmetric Key'
-    _rec_name = 'password_entry_id'
 
-    password_entry_id = fields.Many2one('password.entry', string='Password Entry', required=True, ondelete='cascade')
+
+    password_entry_ids = fields.One2many('password.entry','key_id', string='Password Entry', required=True)
     user_id = fields.Many2one('res.users', string='User', required=True, default=lambda self: self.env.user)
     encrypted_key = fields.Text(string='Encrypted Symmetric Key', required=True)
 
@@ -24,8 +24,4 @@ class PasswordKey(models.Model):
         help='Public key of the user used to encrypt encrypted_key.'
     )
     
-    _sql_constraints = [
-        ('unique_user_entry', 'unique(password_entry_id, user_id)',
-         'A key record already exists for this user and password entry!')
-    ]
 

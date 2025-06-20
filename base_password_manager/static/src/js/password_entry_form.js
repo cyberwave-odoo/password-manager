@@ -17,11 +17,17 @@ export class EncryptedPasswordField extends CharField {
         this.dialog = useService("dialog");
         this.passwordService = useService("password_service");
         this.passwordEncryption = useService("password_encryption");
-        
+
     }
 
     async onChange(ev) {
-        const recordId = this.props.record.resId;
+        if (this.props.record.data['name']=="") {
+            console.log('Auto fill');
+
+            return;
+        }
+        let recordId = this.props.record.resId;
+
         const newValue = ev.target.value;
         const oldValue = this.props.record.data[this.props.name];
         let confirmed = true;
@@ -37,25 +43,32 @@ export class EncryptedPasswordField extends CharField {
             });
         }
 
-
+        
         if (!confirmed) {
-            this.discard();
+            await this.discard();
             return;
         }
+        
         else {
             // here check if user has keys
             if (!recordId) {
+
                 console.log("No record ID, going further");
-                // Call the 'write' method on the 'password.entry' model
-                //this.props.record.data[this.props.name] = "tototototo";
                 console.log(oldValue, newValue);
-                ev.target.value = "new_value"; // Set a new value for the input field
+                let entry = await this.passwordEncryption.savePwd(newValue);
+                await this.props.record.update(entry);
+                console.log(this.props.record.data);
             }
             else {
-                ev.target.value = "existing_write_value"; // Set a new value for the input field 
+                //this.props.record.data['name'] = "tototototo";
+                //ev.target.value = "existing_write_value"; // Set a new value for the input field 
+                console.log(oldValue, newValue);
+                console.log(recordId);
+                let entry = await this.passwordEncryption.savePwd(newValue, [recordId]);
+                await this.props.record.update(entry);
                  
             }
-            this.save();
+            await this.save();
             // Only update the displayed value, do not touch _values or _textValues
         }
         

@@ -6,7 +6,7 @@ class UserPublicKey(models.Model):
 
     user_id = fields.Many2one('res.users', string='User', required=True, ondelete='cascade', index=True)
     public_key = fields.Text(string='Public Key', required=True)
-    private_key_id = fields.One2many('user.private.key', 'public_key_id', ondelete='cascade', string='Private Key')
+    private_key_id = fields.One2many('user.private.key', 'public_key_id', string='Private Key')
     iv = fields.Char(string='Initialization Vector for private key encryption', required=True, help='IV used for encryption')
     
     company_id = fields.Many2one('res.company', string='Company', default=lambda self: self.env.company)

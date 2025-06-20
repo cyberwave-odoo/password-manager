@@ -291,6 +291,57 @@ export class EncryptionService {
         let key = await this.deriveKeyFromPassword(masterPassword, salt);
         return key;
     } 
+
+    async readPwd(recordId) {
+        let activekye = await this.getActiveKeyPair();
+        let entry = await this.passwordService.readPasswordEntry(recordId);
+        let sym_key = await this.symKeyFromEntry(entry);
+        let decrypted_sym_key = await this.unwrapAsymetric(activekye.privateKey, sym_key.encrypted_key);
+        let decrypted_pwd = await this.decryptSymetric(decrypted_sym_key, entry.encrypted_password, entry.iv);
+        return decrypted_pwd;
+    }
+
+    async symKeyFromEntry(entry){
+        let sym_key_id = [entry.key_id[0]];
+        return await this.passwordService.readPasswordKey(sym_key_id);
+    }
+
+    async savePwd(pwd, recordId = []){
+        let activekye = await this.getActiveKeyPair();
+
+        if (recordId.length != 0) {
+            console.log('update pwd');
+            let entry = await this.passwordService.readPasswordEntry(recordId);
+            let sym_key = await this.symKeyFromEntry(entry);
+            let decrypted_sym_key = await this.unwrapAsymetric(activekye.privateKey, sym_key.encrypted_key);
+            let encrypted_pwd = await this.encryptSymetric(decrypted_sym_key, entry.iv, pwd);
+            return {
+                'encrypted_password': await this.convert.arrayBufferToBase64(encrypted_pwd),
+                'iv': await this.convert.Uint8ArrayToBase64(entry.iv)
+            }
+        }
+        else {
+            console.log('create pwd')
+            let symkey = await this.generateSymetricKey();
+            let iv = await this.generateIV();
+            let encrypted_pwd = await this.encryptSymetric(symkey, iv, pwd); 
+
+            let encrypted_sym_key = await this.wrapAsymetric(activekye.publicKey, symkey);
+
+            let pwd_key_ids = await this.passwordService.createPasswordKey([{
+                'password_entry_ids': recordId,
+                'encrypted_key': encrypted_sym_key,
+                'user_public_key_id': activekye.id
+            }]);
+
+            return {
+                'encrypted_password': await this.convert.arrayBufferToBase64(encrypted_pwd),
+                'iv': await this.convert.Uint8ArrayToBase64(iv),
+                'key_id': pwd_key_ids
+            }
+
+        }
+    }
 }
 
 export const encryptionService = {

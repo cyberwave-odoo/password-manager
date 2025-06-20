@@ -25,7 +25,7 @@ class PasswordEntry(models.Model):
     company_id = fields.Many2one('res.company', string='Company', required=True, default=lambda self: self.env.company)
     iv = fields.Char(string='IV', help='IV used for encryption')
     
-    key_ids = fields.One2many('password.key', 'password_entry_id', string='Encrypted Keys')
+    key_id = fields.Many2one('password.key', string='Encrypted Keys')
     share_ids = fields.One2many('password.share', 'password_entry_id', string='Shares')
     
     password_salt = fields.Char(string='Password Salt', compute='_compute_password_salt', store=True)

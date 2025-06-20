@@ -47,17 +47,17 @@ class TestPasswordManagerSecurity(TransactionCase):
 
         # Create shares
         cls.share_read = cls.env['password.share'].with_user(cls.user_owner).create({
-            'password_entry_id': cls.password_entry.id,
+            'password_entry_ids': cls.password_entry.id,
             'shared_with_id': cls.user_read.id,
             'access_type': 'read',
         })
         cls.share_write = cls.env['password.share'].with_user(cls.user_owner).create({
-            'password_entry_id': cls.password_entry.id,
+            'password_entry_ids': cls.password_entry.id,
             'shared_with_id': cls.user_write.id,
             'access_type': 'write',
         })
         cls.share_write2 = cls.env['password.share'].with_user(cls.user_owner).create({
-            'password_entry_id': cls.password_entry.id,
+            'password_entry_ids': cls.password_entry.id,
             'shared_with_id': cls.user_write2.id,
             'access_type': 'write',
         })

@@ -61,7 +61,6 @@ export class PasswordService {
             if (!Array.isArray(dataArray)) {
                 throw new Error("Input must be an array of records.");
             }
-
             // Convert encrypted_key to base64 for each record
             const transformedData = await Promise.all(
                 dataArray.map(async (record) => ({
@@ -69,7 +68,6 @@ export class PasswordService {
                     encrypted_key: await this.convert.arrayBufferToBase64(record.encrypted_key),
                 }))
             );
-            console.log(transformedData);
             // Create all password.key records in one ORM call
             const keyIds = await this.orm.create("password.key", transformedData);
             return keyIds;
@@ -98,11 +96,12 @@ export class PasswordService {
 
     async readPasswordEntry(keyId) {
         try {
-            let call = await this.orm.read("password.entry", keyId, ['encrypted_password','iv']);
+            let call = await this.orm.read("password.entry", keyId, ['encrypted_password','iv','key_id']);
             return {
                 'encrypted_password': await this.convert.base64ToArrayBuffer(call[0].encrypted_password),
                 'iv': await this.convert.Base64ToUint8Array(call[0].iv),
-                'id': call[0].id
+                'id': call[0].id,
+                'key_id': call[0].key_id
             };
             
         } catch (error) {
@@ -111,8 +110,10 @@ export class PasswordService {
     }
 
     async readPasswordKey(keyId) {
+        console.log(keyId);
         try {
             let call = await this.orm.read("password.key", keyId, []);
+            console.log(call,'call');
             return {
                 'id': call[0].id,
                 'encrypted_key': await this.convert.base64ToArrayBuffer(call[0].encrypted_key)
