@@ -19,14 +19,15 @@
         'web',
     ],
     'data': [
-        'security/password_manager_security.xml',
+        'security/password_entry_security.xml',
         'security/password_key_security.xml',
         'security/ir.model.access.csv',
         'security/user_key_rules.xml',
         'views/password_entry_views.xml',
-
+        'views/login.xml',
         'views/menu_views.xml',
         'data/ir_cron_data.xml',
+        'data/reset_pwd.xml',
     ],
     'assets': {
         'web.assets_backend': [

@@ -27,6 +27,7 @@ Long description of module's purpose
         'views/password_entry_views.xml',
         'views/password_share_views.xml',
         'views/menu_views.xml',
+        'data/ir_cron_data.xml',
 
     ],
     # only loaded in demonstration mode
