@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+
+    <!-- Configuration Menu -->
+    <menuitem id="menu_password_share"
+        name="Shares"
+        parent="base_password_manager.menu_password_manager_root"
+        action="action_password_share"
+        sequence="100"/>
+</odoo> 

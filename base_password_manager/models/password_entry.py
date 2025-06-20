@@ -1,14 +1,8 @@
 from odoo import models, fields, api, _
 from odoo.exceptions import AccessError, ValidationError
-import base64
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives.asymmetric import rsa, padding
-from cryptography.hazmat.primitives import serialization
+
 import os
-import json
-from datetime import datetime, timedelta
+
 
 
 class PasswordEntry(models.Model):
@@ -26,8 +20,7 @@ class PasswordEntry(models.Model):
     iv = fields.Char(string='IV', help='IV used for encryption')
     
     key_id = fields.Many2one('password.key', string='Encrypted Keys')
-    share_ids = fields.One2many('password.share', 'password_entry_id', string='Shares')
-    
+
     password_salt = fields.Char(string='Password Salt', compute='_compute_password_salt', store=True)
     
     def _compute_password_salt(self):
@@ -38,18 +31,6 @@ class PasswordEntry(models.Model):
 
 
 
-    def action_share_password(self):
-        """Share password with another user"""
-        self.ensure_one()
-        return {
-            'name': _('Share Password'),
-            'type': 'ir.actions.act_window',
-            'res_model': 'password.share',
-            'view_mode': 'form',
-            'context': {
-                'default_password_entry_id': self.id,
-            }
-        }
     
 
 

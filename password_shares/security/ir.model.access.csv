@@ -1,0 +1,2 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_password_share_user,password.share.user,model_password_share,base.group_user,1,1,1,1

@@ -4,7 +4,6 @@ import os
 class ResUsers(models.Model):
     _inherit = 'res.users'
 
-    password_share_ids = fields.One2many('password.share', 'shared_with_id', string='Shared Passwords')
     password_salt = fields.Char(string='Password Salt', compute='_compute_password_salt', store=True)
     private_key_ids = fields.One2many('user.private.key', 'user_id', string='private_key')
     public_key_ids = fields.One2many('user.public.key', 'user_id', string='private_key')

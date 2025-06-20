@@ -24,7 +24,7 @@
         'security/ir.model.access.csv',
         'security/user_key_rules.xml',
         'views/password_entry_views.xml',
-        'views/password_share_views.xml',
+
         'views/menu_views.xml',
         'data/ir_cron_data.xml',
     ],
@@ -36,7 +36,6 @@
             'base_password_manager/static/src/services/password_encryption_service.js',
             'base_password_manager/static/src/js/password_entry_form.js',
             'base_password_manager/static/src/js/password_to_clipboard.js',
-            'base_password_manager/static/src/css/password_manager.css',
         ],
     },
     'installable': True,

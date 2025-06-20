@@ -13,10 +13,4 @@
         action="action_password_entry"
         sequence="10"/>
 
-    <!-- Configuration Menu -->
-    <menuitem id="menu_password_share"
-        name="Shares"
-        parent="menu_password_manager_root"
-        action="action_password_share"
-        sequence="100"/>
 </odoo> 
