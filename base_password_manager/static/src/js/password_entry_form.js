@@ -17,15 +17,14 @@ export class EncryptedPasswordField extends CharField {
         this.dialog = useService("dialog");
         this.passwordService = useService("password_service");
         this.passwordEncryption = useService("password_encryption");
-
     }
 
     async onChange(ev) {
-        if (this.props.record.data['name']=="") {
-            console.log('Auto fill');
-
+        console.log("catch");
+        if  (!(await this.props.record.checkValidity())){
+            console.log("not valid");
             return;
-        }
+        };
         let recordId = this.props.record.resId;
 
         const newValue = ev.target.value;
@@ -52,21 +51,13 @@ export class EncryptedPasswordField extends CharField {
         else {
             // here check if user has keys
             if (!recordId) {
-
-                console.log("No record ID, going further");
-                console.log(oldValue, newValue);
                 let entry = await this.passwordEncryption.savePwd(newValue);
                 await this.props.record.update(entry);
                 console.log(this.props.record.data);
             }
             else {
-                //this.props.record.data['name'] = "tototototo";
-                //ev.target.value = "existing_write_value"; // Set a new value for the input field 
-                console.log(oldValue, newValue);
-                console.log(recordId);
                 let entry = await this.passwordEncryption.savePwd(newValue, [recordId]);
                 await this.props.record.update(entry);
-                 
             }
             await this.save();
             // Only update the displayed value, do not touch _values or _textValues
@@ -76,7 +67,7 @@ export class EncryptedPasswordField extends CharField {
     }
 
     async discard() {
-        await this.props.discard();
+        await this.props.record.discard();
     }
     async save() {
         await this.props.record.save();

@@ -28,6 +28,12 @@ class PasswordEntry(models.Model):
         for user in self:
             if not user.password_salt:
                 user.password_salt = os.urandom(32).hex()
+    
+    def unlink(self):
+        keys_to_delete = self.mapped('key_id')
+        res = super(PasswordEntry, self).unlink()
+        keys_to_delete.unlink()
+        return res
 
 
 

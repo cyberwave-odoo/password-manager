@@ -12,7 +12,7 @@
         - Password sharing with access control
     """,
     'author': 'Your Company',
-    'website': 'https://www.yourcompany.com',
+    'website': 'https://www.cyberwave.be',
     'depends': [
         'base',
         'mail',

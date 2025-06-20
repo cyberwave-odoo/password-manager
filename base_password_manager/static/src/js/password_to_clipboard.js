@@ -11,7 +11,9 @@ registry.category("actions").add("copy_to_clipboard", async (env, context) => {
     //const password_service = env.services.password_service;
     const password_encryption = env.services.password_encryption;
     const recordId = JSON.parse(context._originalAction).context.active_ids;
-
+    console.log(env);
+    console.log(context);
+    console.log(recordId);
     try {
         let decrypted_pwd = await password_encryption.readPwd(recordId);
         navigator.clipboard.writeText(decrypted_pwd);
