@@ -279,10 +279,11 @@ export class EncryptionService {
         let masterPassword = this.passwordService.getMasterPassword();
 
         if (!masterPassword) {
-            masterPassword = prompt(_t("Please enter your master password:"));
-            if (masterPassword) {
-                this.passwordService.setMasterPassword(masterPassword);
-            }
+            window.location.href = '/web/session/logout?redirect=/web/login'; 
+            //masterPassword = prompt(_t("Please enter your master password:"));
+            //if (masterPassword) {
+            //    this.passwordService.setMasterPassword(masterPassword);
+            //}
         }
         if (!masterPassword) {
             return;
