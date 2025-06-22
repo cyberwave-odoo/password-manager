@@ -38,6 +38,8 @@
             'base_password_manager/static/src/js/password_entry_form.js',
             'base_password_manager/static/src/js/password_to_clipboard.js',
             'base_password_manager/static/src/js/login.js',
+            'base_password_manager/static/src/js/session_killer.js',
+            'base_password_manager/static/src/xml/session_killer.xml',
         ],
         'web.assets_fontend':[
 

@@ -59,7 +59,7 @@ export class EncryptedPasswordField extends CharField {
                 let entry = await this.passwordEncryption.savePwd(newValue, [recordId]);
                 await this.props.record.update(entry);
             }
-            await this.save();
+            //await this.save();
             // Only update the displayed value, do not touch _values or _textValues
         }
         

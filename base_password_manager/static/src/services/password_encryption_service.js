@@ -272,19 +272,24 @@ export class EncryptionService {
               ["wrapKey", "unwrapKey","encrypt","decrypt"]
         );
     }
+    checkMasterPwd() {
+        let masterPassword = this.passwordService.getMasterPassword();
+        
+        if (!masterPassword) {
+            window.open('/web/session/logout?redirect=/', '_blank');
+            //window.close();
+            window.location.href = '/web/session/logout?redirect=/';
+            return;
+        }
+        return masterPassword;
+
+    }
 
     async derivedKey() {
         // this must check that the password entered is appropriate
         // TODO what happend when the master password is changed?
-        let masterPassword = this.passwordService.getMasterPassword();
+        let masterPassword = this.checkMasterPwd();
 
-        if (!masterPassword) {
-            window.location.href = '/web/session/logout?redirect=/web/login'; 
-            //masterPassword = prompt(_t("Please enter your master password:"));
-            //if (masterPassword) {
-            //    this.passwordService.setMasterPassword(masterPassword);
-            //}
-        }
         if (!masterPassword) {
             return;
         }
