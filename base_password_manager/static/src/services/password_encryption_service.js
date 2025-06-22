@@ -277,7 +277,7 @@ export class EncryptionService {
         
         if (!masterPassword) {
             window.open('/web/session/logout?redirect=/', '_blank');
-            //window.close();
+            window.close();
             window.location.href = '/web/session/logout?redirect=/';
             return;
         }
