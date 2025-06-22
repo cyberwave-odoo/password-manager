@@ -37,7 +37,11 @@
             'base_password_manager/static/src/services/password_encryption_service.js',
             'base_password_manager/static/src/js/password_entry_form.js',
             'base_password_manager/static/src/js/password_to_clipboard.js',
+            'base_password_manager/static/src/js/login.js',
         ],
+        'web.assets_fontend':[
+
+        ]
     },
     'installable': True,
     'application': True,

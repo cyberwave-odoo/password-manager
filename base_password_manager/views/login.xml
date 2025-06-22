@@ -1,16 +1,8 @@
 <odoo>
     <template id="web_login_inherit" inherit_id="web.login" name="Custom Login Script">
         <xpath expr="//t[@t-call='web.login_layout']" position="inside">
-            <script type="text/javascript">
-                document.addEventListener("DOMContentLoaded", function () {
-                    const form = document.querySelector(".oe_login_form");
-                    if (form) {
-                        form.addEventListener("submit", function () {
-                            const passwordInput = form.querySelector("input[name='password']");
-                            sessionStorage.setItem("master_key", passwordInput.value)
-                        });
-                    }
-                });
+            <script type="text/javascript" src="/base_password_manager/static/src/js/login.js">
+
             </script>
         </xpath>
     </template>
