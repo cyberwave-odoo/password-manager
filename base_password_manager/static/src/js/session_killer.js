@@ -11,7 +11,6 @@ class SessionKiller extends Component {
         this.action = useService("action"); // Get the action service
         
         onWillStart(() => {
-            console.log('check');
             this.passwordEncryption.checkMasterPwd();
         });
 

@@ -17,19 +17,31 @@ export class EncryptedPasswordField extends CharField {
         this.dialog = useService("dialog");
         this.passwordService = useService("password_service");
         this.passwordEncryption = useService("password_encryption");
+        this.suppress_update = false;
+        
+        this.props.record._onUpdate = (async () => {
+            console.log("suppress_update", this.suppress_update);
+            if (this.props.record._changes.encrypted_password && !this.suppress_update) {
+                console.log("onUpdate event listener");
+                await this.changePwd(this.props.record._changes.encrypted_password);
+            }
+            this.suppress_update = false;
+        });
     }
-
     async onChange(ev) {
-        console.log("catch");
-        if  (!(await this.props.record.checkValidity())){
-            console.log("not valid");
-            return;
-        };
-        let recordId = this.props.record.resId;
+        return;
+        if (!this.props.record.resId) {
+            console.log("onChange");
+            await this.changePwd(ev.target.value);
+            console.log("afterchange", this.suppress_update);
+        }
+        
+    };
 
-        const newValue = ev.target.value;
-        const oldValue = this.props.record.data[this.props.name];
+    async changePwd(newValue) {
         let confirmed = true;
+        let recordId = this.props.record.resId;
+        console.log("newvalue", newValue);
 
         if (recordId) {
                 confirmed = await new Promise((resolve) => {
@@ -42,32 +54,39 @@ export class EncryptedPasswordField extends CharField {
             });
         }
 
-        
         if (!confirmed) {
             await this.discard();
-            return;
+            return ;
         }
         
         else {
-            // here check if user has keys
+            let entry = {}
             if (!recordId) {
-                let entry = await this.passwordEncryption.savePwd(newValue);
-                await this.props.record.update(entry);
-                console.log(this.props.record.data);
+                console.log("no Id create");
+                entry = await this.passwordEncryption.savePwd(newValue);
+                this.props.record._changes.key_id = entry.key_id
+                
             }
             else {
-                let entry = await this.passwordEncryption.savePwd(newValue, [recordId]);
-                await this.props.record.update(entry);
+                console.log("Id update", recordId);
+                entry = await this.passwordEncryption.savePwd(newValue, [recordId]);
+                
             }
-            //await this.save();
-            // Only update the displayed value, do not touch _values or _textValues
+            
+            console.log("entry", entry.encrypted_password);
+            console.log(this.props.record._changes);
+            this.props.record._changes.encrypted_password = entry.encrypted_password;
+            this.props.record._changes.iv = entry.iv;
+            this.suppress_update = true;
+            console.log(this.props.record._changes);
         }
         
         return;
     }
 
     async discard() {
-        await this.props.record.discard();
+        this.props.record._changes = {};
+        return;
     }
     async save() {
         await this.props.record.save();
